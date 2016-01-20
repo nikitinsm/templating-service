@@ -10,11 +10,26 @@ from werkzeug.wrappers import Request, Response
 from jinja2 import Environment, FileSystemLoader
 
 
-DEBUG = (os.environ.get('DEBUG', '0').lower() in {'1', 'on', 'true'}) or False
-TEMPLATING_ROOT = os.environ.get('TEMPLATING_ROOT') or '/templates'
-ALLOWED_METHODS = {'post', 'get'}
-MEASURE_DURATION = DEBUG or (os.environ.get('MEASURE_DURATION', '0').lower() in {'1', 'on', 'true'}) or False
+# Settings
 
+DEBUG = \
+    (os.environ.get('DEBUG', '0').lower() in {'1', 'on', 'true'}) \
+    or False
+
+TEMPLATING_ROOT = \
+    os.environ.get('TEMPLATING_ROOT') \
+    or '/templates'
+
+ALLOWED_METHODS = \
+    {'post', 'get'}
+
+MEASURE_DURATION = \
+    DEBUG \
+    or (os.environ.get('MEASURE_DURATION', '0').lower() in {'1', 'on', 'true'}) \
+    or False
+
+
+# Configure jinja environment
 
 jinja_env = Environment\
     ( loader=FileSystemLoader(TEMPLATING_ROOT)
@@ -23,6 +38,8 @@ jinja_env = Environment\
 jinja_env.globals['now'] = datetime.datetime.now
 
 
+# Utils
+
 def template(name, context):
     template_instance = jinja_env.get_template(name)
     return template_instance.render\
@@ -30,11 +47,15 @@ def template(name, context):
         )
 
 
+# Server
+
 @Request.application
 def application(request):
     start = None
     if MEASURE_DURATION:
         start = time.time()
+
+    # Get request
 
     method = request.environ['REQUEST_METHOD']
     if method.lower() not in ALLOWED_METHODS:
@@ -46,11 +67,15 @@ def application(request):
     except Exception as e:
         return InternalServerError('%s "%s"' % (repr(e), e.message))
 
+    # Prepare template context
+
     try:
         context = request.data and json.loads(request.data) or {}
         assert type(context) is dict, 'Expected context as a mapping'
     except Exception as e:
         return BadRequest('Bad json: "%s"' % e.message)
+
+    # Render
 
     try:
         data = template(name, context)
@@ -60,11 +85,15 @@ def application(request):
             message = '%s "%s"' % (repr(e), e.message)
         return InternalServerError(message)
 
+    # Output
+
     mimetype = (mimetypes.guess_type(name) or ('text/plain', None))[0]
     headers =\
         { 'Access-Control-Allow-Origin': '*'
         , 'Access-Control-Allow-Headers': 'Content-Type'
         }
+
+    # Prepare execution time
 
     if start:
         headers['Duration'] = time.time() - start
