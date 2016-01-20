@@ -1,0 +1,7 @@
+eventlet
+gitpython
+gunicorn
+jinja2
+json-rpc
+pytils
+werkzeug
